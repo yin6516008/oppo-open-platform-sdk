@@ -2,9 +2,8 @@ package oppo
 
 import (
 	"fmt"
-	"strconv"
+	"net/url"
 	"testing"
-	"time"
 )
 
 func TestRefreshToken(t *testing.T) {
@@ -17,31 +16,20 @@ func TestRefreshToken(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	fmt.Println(client.token)
 
 }
 
-type TestParseParamsToSortQeuryStruct struct {
-	Name   string `json:"name"`
-	Age    int    `json:"age,string"`
-	IsMale bool   `json:"is_male,string"`
-	Action string `json:"action,omitempty"`
-}
-
-func TestParseParamsToSortQeury(t *testing.T) {
-	params := &TestParseParamsToSortQeuryStruct{
-		Name:   "tom",
-		Age:    18,
-		IsMale: false,
-		Action: "no",
+func TestUrlValues(t *testing.T) {
+	params := map[string]string{
+		"Name": "yin",
+		"Age":  "ming",
 	}
-	now := strconv.FormatInt(time.Now().Unix(), 10)
-	token := "fawefljafljeaw"
-	secret := "fawfsafawefsa"
+	p := url.Values{}
 
-	result, err := ParseParamsToSortQeury(params, token, now, secret)
-	if err != nil {
-		t.Error(err)
+	for k, v := range params {
+		p.Set(k, v)
 	}
-	fmt.Println(result)
+	fmt.Println(p.Encode())
 
 }

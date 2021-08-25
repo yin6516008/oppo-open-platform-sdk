@@ -4,11 +4,6 @@ type Ret struct {
 	Errno int64 `json:"errno"`
 }
 
-type RefreshTokenParams struct {
-	ClientId     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-}
-
 type RefreshTokenRes struct {
 	Ret
 	Data TokenInfo `json:"data"`

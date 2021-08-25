@@ -74,7 +74,7 @@ type AppInfo struct {
 	DetailDesc              string                   `json:"detail_desc"`
 	UpdateDesc              string                   `json:"update_desc"`
 	AppSubname              string                   `json:"app_subname"`
-	TestDesc                interface{}              `json:"test_desc"`
+	TestDesc                string                   `json:"test_desc"`
 	VideoURL                string                   `json:"video_url"`
 	PicURL                  string                   `json:"pic_url"`
 	PackagePermissionDesc   interface{}              `json:"package_permission_desc"`
@@ -115,4 +115,70 @@ type OnlineInfoOfflineApply struct {
 	OnlineState string `json:"online_state"`
 	OnlineTime  string `json:"online_time"`
 	OfflineTime string `json:"offline_time"`
+}
+
+// OppoUpdateReq Oppo应用更新请求参数
+type PublishVersionParams struct {
+	PkgName          string   `json:"pkg_name"`
+	VersionCode      string   `json:"version_code"`
+	ApkUrl           []ApkUrl `json:"apk_url"`
+	AppName          string   `json:"app_name"`
+	SecondCategoryId string   `json:"second_category_id"`
+	ThirdCategoryId  string   `json:"third_category_id"`
+	Summary          string   `json:"summary"`
+	DetailDesc       string   `json:"detail_desc"`
+	UpdateDesc       string   `json:"update_desc"`
+	PrivacySourceUrl string   `json:"privacy_source_url"`
+	IconUrl          string   `json:"icon_url"`
+	PicUrl           string   `json:"pic_url"`
+	OnlineType       string   `json:"online_type"`
+	TestDesc         string   `json:"test_desc"`
+	CopyrightUrl     string   `json:"copyright_url"`
+	BusinessUsername string   `json:"business_username"`
+	BusinessEmail    string   `json:"business_email"`
+	BusinessMobile   string   `json:"business_mobile"`
+}
+
+type ApkUrl struct {
+	Url     string `json:"url"`
+	Md5     string `json:"md5"`
+	CpuCode int    `json:"cpu_code"`
+}
+
+type PublishVersionRes struct {
+	Errno int64       `json:"errno"`
+	Data  interface{} `json:"data"`
+}
+
+type GetUploadFileConfigRes struct {
+	Ret
+	Data PreUploadBody `json:"data"`
+}
+
+type PreUploadBody struct {
+	UploadURL string `json:"upload_url"`
+	Sign      string `json:"sign"`
+}
+
+type UploadFileParams struct {
+	Type      string `json:"type"`
+	Sign      string `json:"sign"`
+	FilePath  string `json:"file_path"`
+	UploadURL string `json:"upload_url"`
+}
+
+type UploadFileRes struct {
+	Ret
+	Data UploadObj `json:"data"`
+}
+
+type UploadObj struct {
+	URL           string `json:"url"`
+	URIPath       string `json:"uri_path"`
+	Md5           string `json:"md5"`
+	Sign          string `json:"sign"`
+	Width         int64  `json:"width"`
+	Height        int64  `json:"height"`
+	FileExtension string `json:"file_extension"`
+	FileSize      int64  `json:"file_size"`
 }

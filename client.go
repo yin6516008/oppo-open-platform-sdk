@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -29,7 +31,7 @@ func NewOppoClient(clientId, clientSecret string) *OppoClient {
 	return &OppoClient{
 		clientId:     clientId,
 		clientSecret: clientSecret,
-		client:       &http.Client{Timeout: 15},
+		client:       &http.Client{},
 		baseURL: &url.URL{
 			Scheme: "https",
 			Host:   "oop-openapi-cn.heytapmobi.com",
@@ -52,6 +54,7 @@ func NewOppoClientWithEnv() (*OppoClient, error) {
 	return &OppoClient{
 		clientId:     clientId,
 		clientSecret: clientSecret,
+		client:       &http.Client{},
 		baseURL: &url.URL{
 			Scheme: "https",
 			Host:   "oop-openapi-cn.heytapmobi.com",
@@ -59,7 +62,7 @@ func NewOppoClientWithEnv() (*OppoClient, error) {
 	}, nil
 }
 
-func (c *OppoClient) NewRequest(method, path string, params interface{}) (*http.Request, error) {
+func (c *OppoClient) NewBaseParams() map[string]string {
 	if c.token == "" || c.tokenExpireIn == 0 || time.Now().Unix() >= c.tokenExpireIn {
 		err := refreshToken(c)
 		if err != nil {
@@ -67,35 +70,26 @@ func (c *OppoClient) NewRequest(method, path string, params interface{}) (*http.
 		}
 	}
 
-	unescaped, err := url.PathUnescape(path)
-	if err != nil {
-		return nil, err
+	p := map[string]string{
+		"access_token": c.token,
+		"timestamp":    strconv.FormatInt(time.Now().Unix(), 10),
 	}
-	c.baseURL.Path = unescaped
 
-	now := strconv.FormatInt(time.Now().Unix(), 10)
-	query, err := ParseParamsToSortQeury(params, c.token, c.clientSecret, now)
-	if err != nil {
-		return nil, err
-	}
-	c.baseURL.RawQuery = query
+	return p
 
-	fmt.Println(c.baseURL.String())
-	req, err := http.NewRequest(method, c.baseURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/jsonapplication/x-www-form-urlencoded")
-	req.Header.Set("Charset", "UTF-8")
-	return req, err
 }
 
-func (c *OppoClient) Do(req *http.Request, v interface{}) (*http.Response, error) {
+func (c *OppoClient) Get(path string, params map[string]string, v interface{}) (*http.Response, error) {
+	c.baseURL.Path = path
 
-	resp, err := c.client.Do(req)
+	query := ParamsToSortQuery(params)
+	c.baseURL.RawQuery = query
+
+	resp, err := c.client.Get(c.baseURL.String())
 	if err != nil {
 		return nil, err
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return resp, fmt.Errorf("the oppo client received an unhealthy status code: %d, message: %s", resp.StatusCode, resp.Status)
 	}
@@ -111,31 +105,38 @@ func (c *OppoClient) Do(req *http.Request, v interface{}) (*http.Response, error
 	return resp, err
 }
 
+func (c *OppoClient) Post(path string, body map[string]string, v interface{}) (*http.Response, error) {
+	c.baseURL.Path = path
+
+	p := url.Values{}
+
+	for k, v := range body {
+		p.Set(k, v)
+	}
+
+	resp, err := c.client.PostForm(c.baseURL.String(), p)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return resp, fmt.Errorf("the oppo client received an unhealthy status code: %d, message: %s", resp.StatusCode, resp.Status)
+	}
+
+	if v != nil {
+		if w, ok := v.(io.Writer); ok {
+			_, err = io.Copy(w, resp.Body)
+		} else {
+			err = json.NewDecoder(resp.Body).Decode(v)
+		}
+	}
+	return resp, err
+}
+
 func refreshToken(c *OppoClient) error {
-	params := &RefreshTokenParams{
-		ClientId:     c.clientId,
-		ClientSecret: c.clientSecret,
-	}
-
-	paramsByte, err := json.Marshal(params)
-	if err != nil {
-		return err
-	}
-
-	var paramsMap map[string]string
-	err = json.Unmarshal(paramsByte, &paramsMap)
-	if err != nil {
-		return err
-	}
-
-	query := MapToSortQeury(paramsMap)
-	if err != nil {
-		return err
-	}
-
 	path := "/developer/v1/token"
 	c.baseURL.Path = path
-	c.baseURL.RawQuery = query
+	c.baseURL.RawQuery = fmt.Sprintf("client_id=%s&client_secret=%s", c.clientId, c.clientSecret)
 
 	resp, err := http.Get(c.baseURL.String())
 	if err != nil {
@@ -159,44 +160,60 @@ func refreshToken(c *OppoClient) error {
 	return err
 }
 
-func ParseParamsToSortQeury(params interface{}, token, clientSecret, now string) (string, error) {
+func HandleParams(params interface{}, p map[string]string, clientSecret string) (map[string]string, error) {
 	paramsByte, err := json.Marshal(params)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var paramsMap map[string]string
-	err = json.Unmarshal(paramsByte, &paramsMap)
+	var mi map[string]interface{}
+	err = json.Unmarshal(paramsByte, &mi)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	paramsMap["access_token"] = token
-	paramsMap["timestamp"] = now
 
-	p := MapToSortQeury(paramsMap)
-	sign := HmacSha256(p, clientSecret)
-	paramsMap["api_sign"] = sign
-	result := MapToSortQeury(paramsMap)
+	for k, v := range mi {
+		vt := reflect.TypeOf(v)
+		switch vt.Kind() {
+		case reflect.Map, reflect.Array, reflect.Slice:
+			value, err := json.Marshal(v)
+			if err != nil {
+				return nil, err
+			}
+			p[k] = string(value)
+		default:
+			p[k] = v.(string)
+		}
+	}
 
-	return result, err
+	sign := Signature(p, clientSecret)
+	p["api_sign"] = sign
 
+	return p, err
 }
 
-func MapToSortQeury(params map[string]string) string {
+func ParamsToSortQuery(params map[string]string) string {
 	var keys []string
 	for k := range params {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
-	p := url.Values{}
+	var resultList []string
 	for i := 0; i < len(keys); i++ {
 		key := keys[i]
 		value := params[key]
-		p.Add(key, value)
+		resultList = append(resultList, fmt.Sprintf("%s=%s", key, value))
 	}
 
-	return p.Encode()
+	result := strings.Join(resultList, "&")
+	return result
+}
+
+func Signature(params map[string]string, clientSecret string) string {
+	query := ParamsToSortQuery(params)
+	sign := HmacSha256(query, clientSecret)
+	return sign
 }
 
 // HmacSha256 加密
