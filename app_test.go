@@ -13,7 +13,7 @@ func TestGetAppDetail(t *testing.T) {
 	}
 
 	params := &GetAppDetailParams{
-		PkgName: "com.gengcon.android.bsydy",
+		PkgName: "cccc",
 	}
 
 	appDetail, _, err := client.GetAppDetail(params)
@@ -36,14 +36,14 @@ func TestPublishVersion(t *testing.T) {
 		t.Error(err)
 	}
 
-	appInfo, _, err := client.GetAppDetail(&GetAppDetailParams{PkgName: "com.gengcon.android.bsydy"})
+	appInfo, _, err := client.GetAppDetail(&GetAppDetailParams{PkgName: "ccccc"})
 	if err != nil {
 		t.Error(err)
 	}
 
 	var apkUrls []ApkUrl
 	apkUrl := ApkUrl{
-		Url: "https://storedl.nearme.com.cn/apk/202004/21/215de68f0db7f2818a2aa2f4a7a390cc.apk",
+		Url: "https://storedl.nearme.com.cn/apk/202004/21/xxxx.apk",
 		Md5: "258261f5b0f4843106968eaa4ac5240f",
 	}
 	apkUrls = append(apkUrls, apkUrl)
@@ -58,15 +58,15 @@ func TestPublishVersion(t *testing.T) {
 		Summary:          appInfo.Data.Summary,
 		DetailDesc:       appInfo.Data.DetailDesc,
 		UpdateDesc:       appInfo.Data.UpdateDesc,
-		PrivacySourceUrl: "http://www.niimbot.com",
+		PrivacySourceUrl: appInfo.Data.PrivacySourceURL,
 		IconUrl:          appInfo.Data.IconURL,
 		PicUrl:           appInfo.Data.PicURL,
 		OnlineType:       appInfo.Data.OnlineType,
-		TestDesc:         "Username:18986169493,Password:whsf2018",
+		TestDesc:         appInfo.Data.TestDesc,
 		CopyrightUrl:     appInfo.Data.CopyrightURL,
-		BusinessUsername: "Liuxiong",
-		BusinessEmail:    "dev@niimbot.com",
-		BusinessMobile:   "18986169493",
+		BusinessUsername: appInfo.Data.BusinessUsername,
+		BusinessEmail:    appInfo.Data.BusinessEmail,
+		BusinessMobile:   appInfo.Data.BusinessMobile,
 	}
 
 	res, _, err := client.PublishVersion(params)
